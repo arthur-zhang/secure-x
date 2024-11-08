@@ -9,6 +9,8 @@ secure-x-common = { path = "../secure-x-common" }
 aya-ebpf = { workspace = true }
 aya-log-ebpf = { workspace = true }
 
+network-types = "0.0.7"
+
 [build-dependencies]
 which = { workspace = true }
 

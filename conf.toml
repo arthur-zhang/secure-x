@@ -1,0 +1,8 @@
+status = "On"
+incoming_policy = "Deny"
+[[rules]]
+id = "1"
+name = "allow ssh"
+port = 9999
+protocol = "Tcp"
+action = "Allow"
