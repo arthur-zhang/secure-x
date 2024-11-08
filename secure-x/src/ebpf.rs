@@ -1,9 +1,10 @@
 use anyhow::Context;
-use aya::Ebpf;
+use aya::{Btf, Ebpf};
 use aya::maps::HashMap;
-use aya::programs::{Xdp, XdpFlags};
+use aya::programs::{KProbe, Lsm, Xdp, XdpFlags};
+use aya::programs::ProbeKind::KRetProbe;
 use log::{debug, info, warn};
-use crate::conf::{FirewallConf, FirewallStatus, IncomingPolicy, Rule, Status};
+use crate::conf::{Conf, FirewallConf, IncomingPolicy, Rule, Status};
 
 pub struct EbpfManager {
     ebpf: Ebpf,
@@ -34,21 +35,17 @@ impl EbpfManager {
             warn!("failed to initialize eBPF logger: {}", e);
         }
 
-        let program: &mut Xdp =
+        let firewall_prog: &mut Xdp =
             ebpf.program_mut("incoming_port_firewall").unwrap().try_into()?;
-        program.load()?;
-        program.attach(&iface, XdpFlags::SKB_MODE)
+        firewall_prog.load()?;
+        firewall_prog.attach(&iface, XdpFlags::SKB_MODE)
             .context("failed to attach the XDP program with default flags - try changing XdpFlags::default() to XdpFlags::SKB_MODE")?;
 
 
-        // let btf = Btf::from_sys_fs()?;
-        // let program: &mut Lsm = ebpf.program_mut("file_open").unwrap().try_into()?;
-        // program.load("file_open", &btf)?;
-        // program.attach()?;
-        //
-        //
-        // let mut blocklist: HashMap<_, u32, u32> =
-        //     HashMap::try_from(ebpf.map_mut("BLOCKLIST").unwrap())?;
+        let btf = Btf::from_sys_fs()?;
+        let program: &mut Lsm = ebpf.program_mut("ptrace_anti_debugging").unwrap().try_into()?;
+        program.load("ptrace_access_check", &btf)?;
+        program.attach()?;
 
         Ok(Self { ebpf })
     }
@@ -57,6 +54,15 @@ impl EbpfManager {
             HashMap::try_from(self.ebpf.map_mut("FIREWALL_STATUS").unwrap())?;
         let ebpf_status: u8 = status.into();
         firewall_status.insert(&0, &ebpf_status, 0)?;
+
+        Ok(())
+    }
+    pub fn set_anti_debugging(&mut self, flag: Status) -> anyhow::Result<()> {
+        println!("set_anti_debugging {:?}", flag);
+        let mut anti_debugging: HashMap<_, u8, u8> =
+            HashMap::try_from(self.ebpf.map_mut("ANTI_DEBUGGING").unwrap())?;
+        let ebpf_status: u8 = flag.into();
+        anti_debugging.insert(&0, &ebpf_status, 0)?;
 
         Ok(())
     }
@@ -80,11 +86,20 @@ impl EbpfManager {
 
         Ok(())
     }
+    pub fn init(&mut self, conf: &Conf) -> anyhow::Result<()> {
+        self.init_basic(&conf)?;
+        self.init_firewall(&conf)?;
+        Ok(())
+    }
 
-    pub fn init_from_conf(&mut self, conf: &FirewallConf) -> anyhow::Result<()> {
-        self.set_firewall_status(conf.firewall_status.status)?;
-        self.init_rules(&conf.firewall_status.rules)?;
-        self.update_incoming_policy(conf.firewall_status.incoming_policy)?;
+    pub fn init_firewall(&mut self, conf: &Conf) -> anyhow::Result<()> {
+        self.set_firewall_status(conf.firewall.status)?;
+        self.init_rules(&conf.firewall.rules)?;
+        self.update_incoming_policy(conf.firewall.incoming_policy)?;
+        Ok(())
+    }
+    pub fn init_basic(&mut self, conf: &Conf) -> anyhow::Result<()> {
+        self.set_anti_debugging(conf.basic.anti_debugging)?;
         Ok(())
     }
 }

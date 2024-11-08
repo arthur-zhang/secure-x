@@ -2,13 +2,17 @@ use serde::{Deserialize, Serialize};
 use crate::error::ApiError;
 
 #[derive(Deserialize, Serialize, Debug)]
-pub struct FirewallConf {
-    #[serde(flatten)]
-    pub firewall_status: FirewallStatus,
+pub struct Conf {
+    pub basic: BasicConf,
+    pub firewall: FirewallConf,
+}
+#[derive(Deserialize, Serialize, Debug)]
+pub struct BasicConf {
+    pub anti_debugging: Status,
 }
 
 #[derive(Deserialize, Serialize, Eq, PartialEq, Debug)]
-pub struct FirewallStatus {
+pub struct FirewallConf {
     pub status: Status,
     pub incoming_policy: IncomingPolicy,
     pub rules: Vec<Rule>,
@@ -19,7 +23,7 @@ pub enum Action {
     Deny,
 }
 
-impl Into<u8> for Action{
+impl Into<u8> for Action {
     fn into(self) -> u8 {
         match self {
             Action::Allow => 1,
@@ -67,14 +71,24 @@ impl Into<u8> for IncomingPolicy {
     }
 }
 
-async fn get_firewall_status_inner() -> Result<FirewallStatus, ApiError> {
+async fn get_firewall_conf_inner() -> Result<FirewallConf, ApiError> {
     let conf = get_conf().await.map_err(|_| ApiError::FileError)?;
-    Ok(conf.firewall_status)
+    Ok(conf.firewall)
 }
-pub async fn get_conf() -> anyhow::Result<FirewallConf> {
+pub async fn get_conf() -> anyhow::Result<Conf> {
     const FILE_PATH: &str = "/home/arthur/secure-x/conf.toml";
-
     let file = tokio::fs::read_to_string(FILE_PATH).await?;
-    let conf: FirewallConf = toml::from_str(&file)?;
+    let conf: Conf = toml::from_str(&file)?;
     Ok(conf)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_conf_parse() {
+        let conf = get_conf().await.unwrap();
+        println!("conf: {:?}", conf)
+    }
 }

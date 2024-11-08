@@ -1,6 +1,8 @@
 mod ebpf;
 mod conf;
 mod error;
+mod just;
+
 use tokio::signal;
 use crate::conf::get_conf;
 
@@ -24,7 +26,7 @@ async fn main() -> anyhow::Result<()> {
 
     let conf = get_conf().await?;
 
-    ebpf_manager.init_from_conf(&conf)?;
+    ebpf_manager.init(&conf)?;
 
     let ctrl_c = signal::ctrl_c();
     println!("Waiting for Ctrl-C...");

@@ -1,6 +1,10 @@
+[basic]
+anti_debugging = "On"
+
+[firewall]
 status = "On"
 incoming_policy = "Deny"
-[[rules]]
+[[firewall.rules]]
 id = "1"
 name = "allow ssh"
 port = 9999

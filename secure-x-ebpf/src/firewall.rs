@@ -1,10 +1,8 @@
 use aya_ebpf::macros::map;
 use aya_ebpf::maps::HashMap;
 
-use core::mem;
 use aya_ebpf::{bindings::xdp_action, macros::xdp, programs::XdpContext};
 use aya_ebpf::bindings::BPF_ANY;
-use aya_ebpf::programs::SkBuffContext;
 use aya_log_ebpf::info;
 use network_types::eth::{EthHdr, EtherType};
 use network_types::ip::{IpHdr, IpProto, Ipv4Hdr, Ipv6Hdr};
@@ -35,7 +33,12 @@ pub fn get_firewall_status() -> u8 {
     }
 }
 pub fn set_firewall_status(status: u8) {
-    unsafe { FIREWALL_STATUS.insert(&0, &status, BPF_ANY as u64); }
+    unsafe {
+        match FIREWALL_STATUS.insert(&0, &status, BPF_ANY as u64) {
+            Ok(_) => {}
+            Err(_) => {}
+        }
+    }
 }
 
 #[map(name = "PORT_RULES")]
@@ -97,7 +100,6 @@ pub fn try_port_firewall(ctx: XdpContext) -> Result<u32, ()> {
                         }
                     }
 
-
                     let port = unsafe { u16::from_be((*tcphdr).dest) };
 
                     match port_rule(port) {
@@ -110,7 +112,6 @@ pub fn try_port_firewall(ctx: XdpContext) -> Result<u32, ()> {
                             return Ok(xdp_action::XDP_PASS);
                         }
                         Some(EbpfInboundAction::Deny) => {
-                            info!(&ctx, "Dropping packet with port {}", port);
                             return Ok(xdp_action::XDP_DROP);
                         }
                     };

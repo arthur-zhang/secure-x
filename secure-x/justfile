@@ -1,0 +1,16 @@
+#!/usr/bin/env just --justfile
+
+release:
+  cargo build --release    
+
+lint:
+  cargo clippy
+
+run:
+  cargo run
+
+example:
+  cargo run --example exname -- arg1
+
+test_conf_parse:
+    cargo test --package secure-x --bin secure-x conf::tests::test_conf_parse -- --exact --nocapture
