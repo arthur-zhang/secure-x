@@ -6,5 +6,5 @@ linux security using ebpf
 
 ## Features
 
-- [] incoming port policy
-- [] anti-debugging
+- [x] incoming port policy
+- [x] anti-debugging
