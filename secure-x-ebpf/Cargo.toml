@@ -1,0 +1,17 @@
+[package]
+name = "secure-x-ebpf"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+secure-x-common = { path = "../secure-x-common" }
+
+aya-ebpf = { workspace = true }
+aya-log-ebpf = { workspace = true }
+
+[build-dependencies]
+which = { workspace = true }
+
+[[bin]]
+name = "secure-x"
+path = "src/main.rs"
